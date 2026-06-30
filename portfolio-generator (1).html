@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfolio Generator — Powered by Langflow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background:#110720; --fg:#ffffff; --muted:rgba(255,255,255,0.65);
+    --accent:#a855f7; --accent2:#c084fc; --border:rgba(255,255,255,0.12);
+    --field-bg:rgba(255,255,255,0.04);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html { scroll-behavior:smooth; }
+  body {
+    background:var(--background); color:var(--fg); font-family:'Poppins',Arial,Helvetica,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased; overflow-x:hidden; position:relative; min-height:100vh;
+  }
+
+  /* ambient gradient background, consistent with the generated portfolios */
+  .gemini-bg { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+  .blob { position:absolute; border-radius:50%; filter:blur(110px); opacity:0.4; mix-blend-mode:screen; animation:drift 24s ease-in-out infinite; }
+  .b1 { width:480px; height:480px; background:radial-gradient(circle,#4285f4,transparent 70%); top:-12%; left:-12%; }
+  .b2 { width:440px; height:440px; background:radial-gradient(circle,#a855f7,transparent 70%); top:20%; right:-15%; animation-delay:-7s; }
+  .b3 { width:420px; height:420px; background:radial-gradient(circle,#ec4899,transparent 70%); bottom:-15%; left:15%; animation-delay:-13s; }
+  @keyframes drift {
+    0%,100% { transform:translate(0,0) scale(1); }
+    33% { transform:translate(50px,-30px) scale(1.1); }
+    66% { transform:translate(-30px,40px) scale(0.92); }
+  }
+
+  header, main, footer { position:relative; z-index:1; }
+
+  header { padding:28px 6%; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+  header .brand { font-weight:700; font-size:1.2rem; }
+  header .brand span { color:var(--accent2); }
+  header .tag { color:var(--muted); font-size:0.85rem; }
+
+  main { max-width:720px; margin:0 auto; padding:60px 6% 100px; }
+
+  .intro { text-align:center; margin-bottom:48px; }
+  .intro h1 {
+    font-size:clamp(1.9rem,5vw,2.6rem); font-weight:700; letter-spacing:-0.02em; margin-bottom:14px;
+  }
+  .intro h1 .accent-grad {
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .intro p { color:var(--muted); max-width:520px; margin:0 auto; font-size:0.98rem; }
+
+  form { display:flex; flex-direction:column; gap:22px; }
+  .field { display:flex; flex-direction:column; gap:8px; }
+  .field label { font-size:0.88rem; font-weight:600; color:var(--fg); }
+  .field .hint { font-size:0.78rem; color:var(--muted); margin-top:-2px; }
+  .field input, .field select, .field textarea {
+    background:var(--field-bg); border:1px solid var(--border); border-radius:12px;
+    padding:13px 16px; color:var(--fg); font-family:inherit; font-size:0.92rem;
+    outline:none; transition:border-color 0.2s, background 0.2s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color:var(--accent); background:rgba(255,255,255,0.07);
+  }
+  .field textarea { resize:vertical; min-height:90px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+  .links-list { display:flex; flex-direction:column; gap:8px; }
+  .links-list input { margin-bottom:0; }
+  .add-link-btn {
+    align-self:flex-start; background:none; border:1px dashed var(--border); color:var(--accent2);
+    padding:8px 14px; border-radius:10px; font-size:0.82rem; cursor:pointer; transition:border-color 0.2s;
+  }
+  .add-link-btn:hover { border-color:var(--accent); }
+
+  .submit-btn {
+    margin-top:10px; padding:15px; border:none; border-radius:14px; cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff;
+    font-family:inherit; font-weight:600; font-size:1rem; transition:transform 0.2s, box-shadow 0.2s;
+  }
+  .submit-btn:hover { transform:translateY(-2px); box-shadow:0 12px 30px -8px var(--accent); }
+  .submit-btn:disabled { opacity:0.6; cursor:not-allowed; transform:none; box-shadow:none; }
+
+  .status-box {
+    margin-top:28px; padding:22px; border-radius:14px; border:1px solid var(--border);
+    background:var(--field-bg); display:none;
+  }
+  .status-box.visible { display:block; }
+  .status-box.loading { color:var(--muted); }
+  .spinner {
+    width:18px; height:18px; border:2px solid rgba(255,255,255,0.2); border-top-color:var(--accent2);
+    border-radius:50%; display:inline-block; vertical-align:middle; margin-right:10px;
+    animation:spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  .result-box {
+    margin-top:28px; padding:28px; border-radius:16px; border:1px solid var(--border);
+    background:var(--field-bg); display:none; text-align:center;
+  }
+  .result-box.visible { display:block; }
+  .result-box h3 { margin-bottom:10px; font-size:1.2rem; }
+  .result-box p { color:var(--muted); font-size:0.9rem; margin-bottom:18px; }
+  .result-link {
+    display:inline-block; padding:12px 26px; border-radius:24px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; font-weight:600;
+    font-size:0.92rem; transition:transform 0.2s;
+  }
+  .result-link:hover { transform:translateY(-2px); }
+  .error-box {
+    margin-top:28px; padding:20px; border-radius:14px; border:1px solid rgba(239,68,68,0.4);
+    background:rgba(239,68,68,0.08); color:#fca5a5; font-size:0.88rem; display:none;
+  }
+  .error-box.visible { display:block; }
+
+  footer { text-align:center; padding:30px 6% 50px; color:var(--muted); font-size:0.82rem; border-top:1px solid var(--border); }
+
+  @media (max-width:600px) {
+    .row2 { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="gemini-bg">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <div class="blob b3"></div>
+</div>
+
+<header>
+  <div class="brand">Portfolio<span>Forge</span></div>
+  <div class="tag">Powered by Langflow + Gemini</div>
+</header>
+
+<main>
+  <div class="intro">
+    <h1>Build your <span class="accent-grad">portfolio</span> in one form</h1>
+    <p>Fill in your details below — any field, any category: developer, photographer, chef, dancer, doctor, anything. The agent writes the copy, designs the page, and deploys it live.</p>
+  </div>
+
+  <form id="portfolioForm">
+    <div class="field">
+      <label for="name">Full Name</label>
+      <input type="text" id="name" required placeholder="e.g. Vandrangi Sai Vidhya">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="category">Category</label>
+        <select id="category">
+          <option value="">Auto-detect from details</option>
+          <option value="developer">Developer / Engineer</option>
+          <option value="photography">Photographer</option>
+          <option value="chef">Chef</option>
+          <option value="education">Educator / Academic</option>
+          <option value="artist">Artist</option>
+          <option value="musician">Musician</option>
+          <option value="dancer">Dancer</option>
+          <option value="fitness">Fitness Trainer</option>
+          <option value="writer">Writer</option>
+          <option value="designer">Designer</option>
+          <option value="doctor">Doctor / Healthcare</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="location">Location</label>
+        <input type="text" id="location" placeholder="e.g. India">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="role">Current Role / Title</label>
+      <input type="text" id="role" placeholder="e.g. AI Agent Developer at Microgrid Technologies">
+    </div>
+
+    <div class="field">
+      <label for="about">About You</label>
+      <span class="hint">A short bio — background, what you do, what drives you.</span>
+      <textarea id="about" placeholder="Write 2-4 sentences about yourself..."></textarea>
+    </div>
+
+    <div class="field">
+      <label for="projects">Key Projects / Work</label>
+      <span class="hint">One per line. Format: Title: description</span>
+      <textarea id="projects" placeholder="Auto Agent Builder: A Langflow-based system that...&#10;eKYC Agent: An automated verification agent..."></textarea>
+    </div>
+
+    <div class="field">
+      <label for="education">Education / Training</label>
+      <textarea id="education" placeholder="B.Tech in Computer Science, XYZ College..."></textarea>
+    </div>
+
+    <div class="field">
+      <label for="extras">Hobby Projects / Extras (optional)</label>
+      <textarea id="extras" placeholder="Side projects, hobbies, anything else worth showing..."></textarea>
+    </div>
+
+    <div class="field">
+      <label for="skills">Skills</label>
+      <span class="hint">Comma-separated</span>
+      <input type="text" id="skills" placeholder="Langflow, LangChain, Python, React">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="phone">Phone (optional)</label>
+        <input type="text" id="phone" placeholder="+91...">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Links</label>
+      <span class="hint">GitHub, LinkedIn, website, anything you want shown</span>
+      <div class="links-list" id="linksList">
+        <input type="text" placeholder="https://github.com/yourname">
+      </div>
+      <button type="button" class="add-link-btn" id="addLinkBtn">+ Add another link</button>
+    </div>
+
+    <button type="submit" class="submit-btn" id="submitBtn">Generate My Portfolio</button>
+  </form>
+
+  <div class="status-box" id="statusBox">
+    <span class="spinner"></span>
+    <span id="statusText">Sending your details to the agent…</span>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="result-box" id="resultBox">
+    <h3>Your portfolio is live 🎉</h3>
+    <p id="resultDesc">Here's your link — share it anywhere.</p>
+    <a class="result-link" id="resultLink" href="#" target="_blank">View Portfolio →</a>
+  </div>
+</main>
+
+<footer>
+  Built with Langflow · Gemini · Vercel
+</footer>
+
+<script>
+  // ====== CONFIGURE THESE TWO VALUES ======
+  // IMPORTANT: "http://localhost:7860" only works while testing on the SAME
+  // machine that's running Langflow. To make this form work from Vercel (or
+  // any other device), replace this with a public URL:
+  //   - ngrok quick test:  run `ngrok http 7860`, then paste the https://...ngrok-free.app URL here
+  //   - permanent hosting: deploy Langflow to Railway/Render/a VPS and use that domain
+  const LANGFLOW_HOST_URL = "http://localhost:7860";
+  const FLOW_ID = "feef11c5-d1fb-44a4-b783-1ae142add8ad";
+  // If your flow requires an API key, set it here. For production, proxy this
+  // through a backend instead of exposing the key in client-side JS.
+  const LANGFLOW_API_KEY = "sk-LG-4hQNVz9ShRKVDmIzp3k5HlKpS7pqpspgZjcTCe8s";
+  // =========================================
+
+  const linksList = document.getElementById('linksList');
+  document.getElementById('addLinkBtn').addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'https://...';
+    linksList.appendChild(input);
+  });
+
+  function buildRawInput() {
+    const name = document.getElementById('name').value.trim();
+    const category = document.getElementById('category').value;
+    const role = document.getElementById('role').value.trim();
+    const location = document.getElementById('location').value.trim();
+    const about = document.getElementById('about').value.trim();
+    const projects = document.getElementById('projects').value.trim();
+    const education = document.getElementById('education').value.trim();
+    const extras = document.getElementById('extras').value.trim();
+    const skills = document.getElementById('skills').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const links = Array.from(linksList.querySelectorAll('input'))
+      .map(i => i.value.trim()).filter(Boolean);
+
+    let text = `Name: ${name}\n`;
+    if (category) text += `Category: ${category}\n`;
+    if (role) text += `Role: ${role}\n`;
+    if (about) text += `About: ${about}\n`;
+    if (projects) text += `\nKey Projects:\n${projects}\n`;
+    if (education) text += `\nEducation: ${education}\n`;
+    if (extras) text += `\nHobby Projects / Extras: ${extras}\n`;
+    if (skills) text += `\nSkills: ${skills}\n`;
+    text += `\nContact: Location - ${location || 'N/A'}. Email - ${email || 'N/A'}. Phone - ${phone || 'N/A'}.\n`;
+    if (links.length) text += `Links: ${links.join(', ')}\n`;
+
+    return text;
+  }
+
+  function extractUrl(responseJson) {
+    // Langflow run responses nest output text inside outputs[].outputs[].results.message.text (or similar)
+    // We search the whole payload for the first https? URL as a robust fallback.
+    const str = JSON.stringify(responseJson);
+    const match = str.match(/https?:\/\/[^\s"\\]+/g);
+    if (!match) return null;
+    // Prefer a vercel.app link if present, otherwise the first URL found
+    return match.find(u => u.includes('vercel.app')) || match[0];
+  }
+
+  document.getElementById('portfolioForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const submitBtn = document.getElementById('submitBtn');
+    const statusBox = document.getElementById('statusBox');
+    const statusText = document.getElementById('statusText');
+    const errorBox = document.getElementById('errorBox');
+    const resultBox = document.getElementById('resultBox');
+
+    errorBox.classList.remove('visible');
+    resultBox.classList.remove('visible');
+    statusBox.classList.add('visible');
+    statusText.textContent = "Sending your details to the agent…";
+    submitBtn.disabled = true;
+
+    const rawInput = buildRawInput();
+
+    try {
+      statusText.textContent = "Generating your portfolio — this can take 15-30 seconds…";
+
+      const headers = { "Content-Type": "application/json" };
+      if (LANGFLOW_API_KEY) headers["x-api-key"] = LANGFLOW_API_KEY;
+
+      const res = await fetch(`${LANGFLOW_HOST_URL}/api/v1/run/${FLOW_ID}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          input_value: rawInput,
+          output_type: "chat",
+          input_type: "chat"
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server responded with ${res.status}`);
+      }
+
+      const data = await res.json();
+      const url = extractUrl(data);
+
+      statusBox.classList.remove('visible');
+
+      if (url) {
+        document.getElementById('resultLink').href = url;
+        resultBox.classList.add('visible');
+      } else {
+        errorBox.textContent = "The agent ran, but no link was found in the response. Check the Langflow run logs.";
+        errorBox.classList.add('visible');
+      }
+    } catch (err) {
+      statusBox.classList.remove('visible');
+      errorBox.textContent = `Something went wrong: ${err.message}. Check that LANGFLOW_HOST_URL and FLOW_ID are set correctly and that your Langflow server is reachable.`;
+      errorBox.classList.add('visible');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
